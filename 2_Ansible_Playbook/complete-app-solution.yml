@@ -1,0 +1,190 @@
+---
+- name: Create 3 Tier App
+  hosts: apic
+  connection: local
+  gather_facts: no
+
+  vars:
+    ansible_python_interpreter: "/usr/bin/env python"
+    aci_login: &aci_login
+      hostname: '{{ apic_host }}'
+      username: '{{ apic_username }}'
+      password: '{{ apic_password }}'
+      use_proxy: no
+      validate_certs: no
+    # FIX Non Existent Tenant --> Ensures aci-deploy.py successfully ran to setup Tenants expected. Fixed OBOE, etc
+    # or used ansible playbook 'create-tenant-vrf.yml' and utilized the loops correctly
+    # Furthermore, hardcoded a typo into the Tenant
+    tenant: "CCIE_DC_T26Z"
+    vrf: "CCIE_DC_VRF26Z"
+    ap: APP1
+    vmmdomain: ACI-vDS
+
+    bds:
+      - bd: "BD-Web"
+        gateway: "192.168.1.254"
+        mask: "24"
+        scope: "public"
+      - bd: "BD-App"
+        gateway: "192.168.2.254"
+        mask: "24"
+        scope: "private"
+      - bd: "BD-DB"
+        gateway: "192.168.3.254"
+        mask: "24"
+        scope: "private"
+    epgs:
+      - epg: "Web"
+        bd: "BD-Web"
+      - epg: "App"
+        bd: "BD-App"
+      - epg: "DB"
+        bd: "BD-DB"
+    contracts:
+      - contract: "Web-App"
+        subject: "subject1"
+        filter: "http"
+      - contract: "Web-App"
+        subject: "subject2"
+        filter: "icmp"
+      - contract: "App-DB"
+        subject: "subject1"
+        filter: "http"
+      - contract: "App-DB"
+        subject: "subject2"
+        filter: "icmp"
+    filters:
+      - filter: "http"
+        entry: "http"
+        protocol: "tcp"
+        port: "80"
+      - filter: "icmp"
+        entry: "icmp"
+        protocol: "icmp"
+        port: "0"
+    epg_contracts:
+      - epg: "Web"
+        contract: "Web-App"
+        type: "consumer" # FIX Ensure this is consumer
+      - epg: "App"
+        contract: "Web-App"
+        type: "provider" # FIX Ensure this is provider
+      - epg: "App"
+        contract: "App-DB"
+        type: "consumer" # FIX Ensure this is consumer
+      - epg: "DB"
+        contract: "App-DB"
+        type: "provider" # FIX Ensure this is provider
+
+  tasks:
+    - name: TASK 03 - Create BD
+      aci_bd:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        bd: "{{ item.bd }}"
+        vrf: "{{ vrf }}"
+        enable_routing: yes
+        arp_flooding: yes
+        l2_unknown_unicast: flood
+      with_items: "{{ bds }}"
+
+    - name: TASK 04 - Create BD subnets
+      aci_bd_subnet:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        bd: "{{ item.bd }}"
+        gateway: "{{ item.gateway }}"
+        mask: "{{ item.mask }}"
+        scope: "{{ item.scope }}"
+      with_items: "{{ bds }}"
+
+    - name: TASK 05 - Create App Profile
+      #aci_app_profile:  # FIX Non Existent Module == aci_ap
+      aci_ap:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        ap: "{{ ap }}"
+
+    - name: TASK 06 - Create EPG
+      aci_epg:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        ap: "{{ ap }}"
+        epg: "{{ item.epg }}"
+        bd: "{{ item.bd }}"
+      with_items: "{{ epgs }}"
+
+    - name: TASK 07 - Associate EPG to domain
+      aci_epg_to_domain:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        ap: "{{ ap }}"
+        epg: "{{ item.epg }}"
+        domain: "{{ vmmdomain }}"
+        domain_type: vmm
+        vm_provider: vmware
+        encap_mode: "auto"
+      with_items: "{{ epgs }}"
+
+    - name: Pausing
+      pause:
+        seconds: 2
+
+    - name: TASK 08 - Create filter
+      aci_filter:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        filter: "{{ item.filter }}"
+      with_items: "{{ filters }}"
+
+    - name: TASK 09 - Create filter entry
+      aci_filter_entry:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        filter: "{{ item.filter }}"
+        entry: "{{ item.entry }}"
+        ether_type: ip
+        ip_protocol: "{{ item.protocol }}"
+        dst_port: "{{ item.port }}"
+      with_items: "{{ filters }}"
+
+    - name: TASK 10 - Create contract
+      aci_contract:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        contract: "{{ item.contract }}"
+        scope: "context"
+      with_items: "{{ contracts }}"
+
+    - name: TASK 11 - Create contract subject
+      aci_contract_subject:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        contract: "{{ item.contract }}"
+        subject: "{{ item.subject }}"
+      with_items: "{{ contracts }}"
+
+    - name: Pausing
+      pause:
+        seconds: 2
+
+    - name: TASK 12 - Subject to filter bindings
+      aci_contract_subject_to_filter:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        contract: "{{ item.contract }}"
+        subject: "{{ item.subject }}"
+        filter: "{{ item.filter }}"
+      with_items: "{{ contracts }}"
+
+    - name: TASK 13 - Bind epg to contract
+      aci_epg_to_contract:
+        <<: *aci_login
+        tenant: "{{ tenant }}"
+        ap: "{{ ap }}"
+        epg: "{{ item.epg }}"
+        contract: "{{ item.contract }}"
+        contract_type: "{{ item.type }}" # FIX Ensure to put item.type to use element from loop for missing contract_type
+      with_items: "{{ epg_contracts }}"
+      tags:
+          - epg_contract_bind # Can use 'ansible-playbook -i Simulator_Inventory complete-app.yml --tags epg_contract_bind' to just run this task #13

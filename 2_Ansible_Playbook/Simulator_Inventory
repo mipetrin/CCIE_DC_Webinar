@@ -1,0 +1,7 @@
+---
+all:
+  hosts:
+    apic:
+      apic_host: "10.66.110.115"
+      apic_password: admincisco
+      apic_username: admin

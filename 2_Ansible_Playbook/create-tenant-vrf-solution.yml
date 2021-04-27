@@ -1,0 +1,84 @@
+---
+- name: Create Tenants and VRFs
+  hosts: apic
+  connection: local
+  gather_facts: no
+
+  vars:
+    ansible_python_interpreter: "/usr/bin/env python"
+    aci_login: &aci_login
+      hostname: '{{ apic_host }}'
+      username: '{{ apic_username }}'
+      password: '{{ apic_password }}'
+      use_proxy: no
+      validate_certs: no
+    tenant: "CCIE_DC_Ansible"
+    vrf: "CCIE_DC_Ansible"
+
+    tenants:
+      - tenant: "CCIE_DC_T1A"
+        vrf: "CCIE_DC_VRF1A"
+      - tenant: "CCIE_DC_T2B"
+        vrf: "CCIE_DC_VRF2B"
+      - tenant: "CCIE_DC_T3C"
+        vrf: "CCIE_DC_VRF3C"
+      - tenant: "CCIE_DC_T4D"
+        vrf: "CCIE_DC_VRF4D"
+      - tenant: "CCIE_DC_T5E"
+        vrf: "CCIE_DC_VRF5E"
+      - tenant: "CCIE_DC_T6F"
+        vrf: "CCIE_DC_VRF6F"
+      - tenant: "CCIE_DC_T7G"
+        vrf: "CCIE_DC_VRF7G"
+      - tenant: "CCIE_DC_T8H"
+        vrf: "CCIE_DC_VRF8H"
+      - tenant: "CCIE_DC_T9I"
+        vrf: "CCIE_DC_VRF9I"
+      - tenant: "CCIE_DC_T10J"
+        vrf: "CCIE_DC_VRF10J"
+      - tenant: "CCIE_DC_T11K"
+        vrf: "CCIE_DC_VRF11K"
+      - tenant: "CCIE_DC_T12L"
+        vrf: "CCIE_DC_VRF12L"
+      - tenant: "CCIE_DC_T13M"
+        vrf: "CCIE_DC_VRF13M"
+      - tenant: "CCIE_DC_T14N"
+        vrf: "CCIE_DC_VRF14N"
+      - tenant: "CCIE_DC_T15O"
+        vrf: "CCIE_DC_VRF15O"
+      - tenant: "CCIE_DC_T16P"
+        vrf: "CCIE_DC_VRF16P"
+      - tenant: "CCIE_DC_T17Q"
+        vrf: "CCIE_DC_VRF17Q"
+      - tenant: "CCIE_DC_T18R"
+        vrf: "CCIE_DC_VRF18R"
+      - tenant: "CCIE_DC_T19S"
+        vrf: "CCIE_DC_VRF19S"
+      - tenant: "CCIE_DC_T20T"
+        vrf: "CCIE_DC_VRF20T"
+      - tenant: "CCIE_DC_T21U"
+        vrf: "CCIE_DC_VRF21U"
+      - tenant: "CCIE_DC_T22V"
+        vrf: "CCIE_DC_VRF22V"
+      - tenant: "CCIE_DC_T23W"
+        vrf: "CCIE_DC_VRF23W"
+      - tenant: "CCIE_DC_T24X"
+        vrf: "CCIE_DC_VRF24X"
+      - tenant: "CCIE_DC_T25Y"
+        vrf: "CCIE_DC_VRF25Y"
+      - tenant: "CCIE_DC_T26Z"
+        vrf: "CCIE_DC_VRF26Z"
+
+  tasks:
+    - name: TASK 01 - Create Tenant
+      aci_tenant:
+        <<: *aci_login
+        tenant: "{{ item.tenant }}" # FIX Adding this to solve as part of the loop, using the right variable
+      with_items: "{{ tenants }}" # FIX Need to using Ansible loop
+
+    - name: TASK 02 - Create VRF
+      aci_vrf:
+        <<: *aci_login
+        tenant: "{{ item.tenant }}" # FIX Adding this to solve as part of the loop, using the right variable
+        vrf: "{{ item.vrf }}" # FIX Adding this to solve as part of the loop, using the right variable
+      with_items: "{{ tenants }}" # FIX Need to using Ansible loop
