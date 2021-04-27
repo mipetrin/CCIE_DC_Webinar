@@ -23,7 +23,7 @@
 # USAGE
 #
 # Deploy Configuration
-# python deploy_aci_app.py --url https://10.66.110.115 --login admin --password admincisco --prefix CCIE_DC --amount 26
+# python aci-deploy.py --url https://10.66.110.115 --login admin --password admincisco --prefix CCIE_DC --amount 26
 #
 """
 
