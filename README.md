@@ -1,1 +1,3 @@
-# CCIE_DC_Webinar
+# Random code and examples that I put together as part of my presentation for Learning at Cisco to the CCIE DC Prep Webinar Series
+
+All examples are for lab purposes only 
